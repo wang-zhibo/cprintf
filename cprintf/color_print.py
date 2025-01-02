@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
@@ -6,18 +7,27 @@
 # Date  :
 # Desc  :
 
-
 from __future__ import print_function, unicode_literals
 import sys
 import json
 import pprint
+from datetime import datetime
 
 
 class ColorPrint:
     """
-    A utility class for printing colored text to stdout or stderr in Python.
+    一个增强版的彩色打印工具类
     """
-
+    # 添加日志级别
+    LOG_LEVELS = {
+        'DEBUG': 10,
+        'INFO': 20,
+        'WARNING': 30,
+        'ERROR': 40,
+        'FATAL': 50
+    }
+    
+    # 扩展颜色配置
     colors = {
         'NONE':    '\033[0m',
         'DEBUG':   '\033[95m',  # 紫色
@@ -27,79 +37,78 @@ class ColorPrint:
         'ERR':     '\033[91m',  # 亮红
         'FATAL':   '\033[31m',  # 红色
         'ENDC':    '\033[0m',   # 结束符
+        'CYAN':    '\033[96m',  # 青色
+        'GRAY':    '\033[90m',  # 灰色
     }
+
+    # 添加日志级别控制
+    log_level = LOG_LEVELS['INFO']
 
     def __init__(self, message):
         """
         在实例化时，默认以普通白色输出到 stdout
         """
-        # 这里使用 _auto_format 来做自动格式处理
         text = self._auto_format(message)
         print(text, file=sys.stdout)
-        # 实例化后就删除对象，和原逻辑保持一致
         del self
+
+    @classmethod
+    def set_log_level(cls, level):
+        """
+        设置日志级别
+        """
+        if level.upper() in cls.LOG_LEVELS:
+            cls.log_level = cls.LOG_LEVELS[level.upper()]
 
     @classmethod
     def _auto_format(cls, message):
         """
-        根据 message 的类型或内容做自动格式化输出：
-        1. 如果是 dict、list 或者能被 JSON 解析，就用 JSON 格式化。
-        2. 否则尝试使用 pprint。
-        3. 如果都不合适，则直接按字符串输出。
+        根据 message 的类型或内容做自动格式化输出
         """
         if isinstance(message, (dict, list)):
             try:
                 return json.dumps(message, indent=4, ensure_ascii=False)
             except (TypeError, ValueError):
-                # 如果 JSON 序列化失败，则退而使用 pprint
                 return pprint.pformat(message)
 
         if isinstance(message, str):
-            # 尝试解析 JSON
             try:
                 parsed = json.loads(message)
-                # 如果成功，就再转为美观的 JSON 字符串
                 return json.dumps(parsed, indent=4, ensure_ascii=False)
             except (json.JSONDecodeError, TypeError, ValueError):
-                # 如果无法被解析成 JSON，则直接返回原字符串
                 return message
 
-        # 其他类型则用 pprint.pformat
         return pprint.pformat(message)
 
     @classmethod
     def _get_repr(cls, message, format_mode='auto'):
         """
-        将非字符串转化为字符串或其美观形式（根据 format_mode）。
+        将非字符串转化为字符串或其美观形式
         """
         if format_mode == 'raw':
-            # 强制直接转字符串（或 repr）
             return str(message) if isinstance(message, str) else repr(message)
-
         elif format_mode == 'json':
-            # 强制 JSON 格式化
             try:
                 return json.dumps(message, indent=4, ensure_ascii=False)
             except (TypeError, ValueError):
-                # JSON 不可用就退回到 pprint
                 return pprint.pformat(message)
-
         elif format_mode == 'pprint':
-            # 强制 pprint
             return pprint.pformat(message)
-
         else:
-            # 'auto' 模式自动判断
             return cls._auto_format(message)
 
     @classmethod
     def _print_in_color(cls, message, color='NONE', file=sys.stdout, prefix='', suffix='', format_mode='auto', **kwargs):
         """
-        通用的内部打印方法，支持前后缀 & 不同格式化模式。
+        增强版打印方法，添加时间戳
         """
+        if cls.LOG_LEVELS.get(color, 0) < cls.log_level:
+            return
+            
+        timestamp = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] " if kwargs.get('timestamp', False) else ''
         text = cls._get_repr(message, format_mode=format_mode)
         print(
-            cls.colors[color] + prefix + text + suffix + cls.colors['ENDC'],
+            cls.colors[color] + timestamp + prefix + text + suffix + cls.colors['ENDC'],
             file=file,
             **kwargs
         )
@@ -107,7 +116,7 @@ class ColorPrint:
     @classmethod
     def get_colored_string(cls, message, color='NONE', prefix='', suffix='', format_mode='auto'):
         """
-        返回带 ANSI 颜色控制符的字符串，但不打印。
+        返回带 ANSI 颜色控制符的字符串，但不打印
         """
         text = cls._get_repr(message, format_mode=format_mode)
         return cls.colors[color] + prefix + text + suffix + cls.colors['ENDC']
@@ -145,7 +154,6 @@ class ColorPrint:
             prefix='', suffix='', format_mode='auto', **kwargs):
         """
         打印错误信息(亮红)到 stderr
-        interrupt=True 时会停止程序执行并打印 fatal_message
         """
         cls._print_in_color(message, color='ERR', prefix=prefix, suffix=suffix, format_mode=format_mode, file=sys.stderr, **kwargs)
         if interrupt:
@@ -157,7 +165,6 @@ class ColorPrint:
               prefix='', suffix='', format_mode='auto', **kwargs):
         """
         打印致命错误信息(红色)到 stderr
-        interrupt=True 时会停止程序执行并打印 fatal_message
         """
         cls._print_in_color(message, color='FATAL', prefix=prefix, suffix=suffix, format_mode=format_mode, file=sys.stderr, **kwargs)
         if interrupt:
@@ -167,7 +174,7 @@ class ColorPrint:
     @classmethod
     def custom(cls, message, color_code, prefix='', suffix='', format_mode='auto', file=sys.stdout, **kwargs):
         """
-        自定义颜色输出。color_code 是一个 ANSI 转义序列字符串，例如: '\\033[96m' (青色)。
+        自定义颜色输出
         """
         text = cls._get_repr(message, format_mode=format_mode)
         print(
@@ -183,12 +190,49 @@ class ColorPrint:
         """
         cls._print_in_color(char * length, color=color, file=file, **kwargs)
 
+    @classmethod
+    def progress_bar(cls, iteration, total, prefix='', suffix='', length=50, fill='█', color='INFO'):
+        """
+        打印进度条
+        """
+        percent = ("{0:.1f}").format(100 * (iteration / float(total)))
+        filled_length = int(length * iteration // total)
+        bar = fill * filled_length + '-' * (length - filled_length)
+        print(f'\r{cls.colors[color]}{prefix} |{bar}| {percent}% {suffix}{cls.colors["ENDC"]}', end='\r')
+        if iteration == total: 
+            print()
+
+    @classmethod
+    def print_table(cls, data, headers=None, color='INFO', align='left'):
+        """
+        打印表格
+        """
+        if not data:
+            return
+            
+        # 计算列宽
+        col_widths = [max(len(str(x)) for x in col) for col in zip(*data)]
+        if headers:
+            col_widths = [max(col_widths[i], len(str(headers[i]))) for i in range(len(headers))]
+            
+        # 打印表头
+        if headers:
+            header = " | ".join(str(h).ljust(col_widths[i]) for i, h in enumerate(headers))
+            cls._print_in_color(header, color=color)
+            cls.line(length=sum(col_widths) + len(col_widths)*3 - 1, color=color)
+            
+        # 打印数据
+        for row in data:
+            row_str = " | ".join(str(x).ljust(col_widths[i]) if align=='left' else str(x).rjust(col_widths[i]) 
+                               for i, x in enumerate(row))
+            cls._print_in_color(row_str, color=color)
+
 
 """
-
-
 if __name__ == '__main__':
     # 使用示例
+    ColorPrint.set_log_level('DEBUG')
+    
     ColorPrint.info("普通字符串")
     ColorPrint.info('{"hello": "world", "list": [1, 2, 3]}')
     ColorPrint.info({"hello": "world", "list": [1, 2, 3]})
@@ -200,6 +244,18 @@ if __name__ == '__main__':
     ColorPrint.line()
     ColorPrint.custom("This is a custom color message in cyan!", "\033[96m")
     ColorPrint.line(char='=', length=60, color='OK')
-
-
+    
+    # 测试进度条
+    import time
+    for i in range(100):
+        time.sleep(0.1)
+        ColorPrint.progress_bar(i + 1, 100, prefix='进度:', suffix='完成', length=50)
+    
+    # 测试表格打印
+    data = [
+        [1, "Alice", 25],
+        [2, "Bob", 30],
+        [3, "Charlie", 35]
+    ]
+    ColorPrint.print_table(data, headers=["ID", "Name", "Age"], color='INFO')
 """
