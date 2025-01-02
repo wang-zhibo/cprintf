@@ -7,6 +7,8 @@
 # Date  :
 # Desc  :
 
+
+
 from __future__ import print_function, unicode_literals
 import sys
 import json
@@ -43,14 +45,6 @@ class ColorPrint:
 
     # 添加日志级别控制
     log_level = LOG_LEVELS['INFO']
-
-    def __init__(self, message):
-        """
-        在实例化时，默认以普通白色输出到 stdout
-        """
-        text = self._auto_format(message)
-        print(text, file=sys.stdout)
-        del self
 
     @classmethod
     def set_log_level(cls, level):
@@ -98,17 +92,17 @@ class ColorPrint:
             return cls._auto_format(message)
 
     @classmethod
-    def _print_in_color(cls, message, color='NONE', file=sys.stdout, prefix='', suffix='', format_mode='auto', **kwargs):
+    def _print_in_color(cls, message, color='NONE', file=sys.stdout, prefix='', suffix='', format_mode='auto', timestamp=False, **kwargs):
         """
         增强版打印方法，添加时间戳
         """
         if cls.LOG_LEVELS.get(color, 0) < cls.log_level:
             return
             
-        timestamp = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] " if kwargs.get('timestamp', False) else ''
+        timestamp_str = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] " if timestamp else ''
         text = cls._get_repr(message, format_mode=format_mode)
         print(
-            cls.colors[color] + timestamp + prefix + text + suffix + cls.colors['ENDC'],
+            cls.colors[color] + timestamp_str + prefix + text + suffix + cls.colors['ENDC'],
             file=file,
             **kwargs
         )
@@ -227,35 +221,3 @@ class ColorPrint:
                                for i, x in enumerate(row))
             cls._print_in_color(row_str, color=color)
 
-
-"""
-if __name__ == '__main__':
-    # 使用示例
-    ColorPrint.set_log_level('DEBUG')
-    
-    ColorPrint.info("普通字符串")
-    ColorPrint.info('{"hello": "world", "list": [1, 2, 3]}')
-    ColorPrint.info({"hello": "world", "list": [1, 2, 3]})
-    ColorPrint.warn({"warn_key": True})
-    ColorPrint.err("这是一条错误信息", format_mode='pprint')
-    ColorPrint.fatal("This is a fatal error.")
-    ColorPrint.ok('强制使用 pprint 模式', format_mode='pprint')
-    ColorPrint.debug('强制使用 raw 模式', format_mode='raw')
-    ColorPrint.line()
-    ColorPrint.custom("This is a custom color message in cyan!", "\033[96m")
-    ColorPrint.line(char='=', length=60, color='OK')
-    
-    # 测试进度条
-    import time
-    for i in range(100):
-        time.sleep(0.1)
-        ColorPrint.progress_bar(i + 1, 100, prefix='进度:', suffix='完成', length=50)
-    
-    # 测试表格打印
-    data = [
-        [1, "Alice", 25],
-        [2, "Bob", 30],
-        [3, "Charlie", 35]
-    ]
-    ColorPrint.print_table(data, headers=["ID", "Name", "Age"], color='INFO')
-"""
