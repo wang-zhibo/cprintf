@@ -28,7 +28,7 @@ class ColorPrint:
         'ERROR': 40,
         'FATAL': 50
     }
-    
+
     # 扩展颜色配置
     colors = {
         'NONE':    '\033[0m',
@@ -98,7 +98,7 @@ class ColorPrint:
         """
         if cls.LOG_LEVELS.get(color, 0) < cls.log_level:
             return
-            
+
         timestamp_str = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] " if timestamp else ''
         text = cls._get_repr(message, format_mode=format_mode)
         print(
@@ -182,7 +182,18 @@ class ColorPrint:
         """
         打印一条分割线
         """
-        cls._print_in_color(char * length, color=color, file=file, **kwargs)
+        # 获取颜色代码，如果不存在则使用默认的 INFO 颜色
+        color_code = cls.colors.get(color, cls.colors['INFO'])
+        
+        # 构建分割线字符串
+        line_str = char * length
+        
+        # 打印带颜色的分割线
+        print(
+            color_code + line_str + cls.colors['ENDC'],
+            file=file,
+            **kwargs
+        )
 
     @classmethod
     def progress_bar(cls, iteration, total, prefix='', suffix='', length=50, fill='█', color='INFO'):
@@ -193,7 +204,7 @@ class ColorPrint:
         filled_length = int(length * iteration // total)
         bar = fill * filled_length + '-' * (length - filled_length)
         print(f'\r{cls.colors[color]}{prefix} |{bar}| {percent}% {suffix}{cls.colors["ENDC"]}', end='\r')
-        if iteration == total: 
+        if iteration == total:
             print()
 
     @classmethod
@@ -203,21 +214,20 @@ class ColorPrint:
         """
         if not data:
             return
-            
+
         # 计算列宽
         col_widths = [max(len(str(x)) for x in col) for col in zip(*data)]
         if headers:
             col_widths = [max(col_widths[i], len(str(headers[i]))) for i in range(len(headers))]
-            
         # 打印表头
         if headers:
             header = " | ".join(str(h).ljust(col_widths[i]) for i, h in enumerate(headers))
             cls._print_in_color(header, color=color)
             cls.line(length=sum(col_widths) + len(col_widths)*3 - 1, color=color)
-            
+
         # 打印数据
         for row in data:
-            row_str = " | ".join(str(x).ljust(col_widths[i]) if align=='left' else str(x).rjust(col_widths[i]) 
+            row_str = " | ".join(str(x).ljust(col_widths[i]) if align=='left' else str(x).rjust(col_widths[i])
                                for i, x in enumerate(row))
             cls._print_in_color(row_str, color=color)
 
