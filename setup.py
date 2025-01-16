@@ -15,7 +15,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='cprintf',
-    version="0.0.8",
+    version="0.0.9",
     author='gm.zhibo.wang',
     author_email='gm.zhibo.wang@gmail.com',
     description='Printing and debugging with color',
